@@ -78,10 +78,8 @@ class CalendarService:
                     {'method': 'popup', 'minutes': 30},       # 30 minutes before
                 ],
             },
-            'source': {
-                'title': 'Boxing Gym Registration',
-                'url': f'gmail://{email_id}',
-            },
+            # Note: Removed source URL as gmail:// format is not supported by Calendar API
+            # The email ID is included in the description instead
         }
     
     def _build_event_description(self, class_details: ClassDetails, email_id: str) -> str:
