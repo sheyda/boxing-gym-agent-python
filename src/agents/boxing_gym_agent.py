@@ -285,15 +285,20 @@ This is a Google Forms confirmation email for a boxing class registration. The e
     "notes": "Any additional notes"
 }}
 
-CRITICAL: Look for the CLASS SCHEDULE section in the email. The user's selected class will be marked with a checkmark (✓) or similar indicator. The format is typically:
+CRITICAL: Look for the CLASS SCHEDULE section in the email. The user's selected class will be marked with a checkmark (✓) symbol.
 
-"CLASS_NAME - Day, Date @ Time -- Coach Name"
+IMPORTANT: DO NOT extract from the first line in the CLASS SCHEDULE section. The first line is NOT the selected class.
 
-For example: "INTERMEDIATE CLASS - Friday, October 10 @ 6:15pm -- Coach Hashim"
+The selected class will have a checkmark (✓) symbol. Look for this exact pattern:
 
-IMPORTANT: The selected class line will have a checkmark (✓) symbol BEFORE the class description. Look for this pattern:
+✓
+INTERMEDIATE CLASS - Friday, October 10 @ 6:15pm -- Coach Hashim
+
+OR
 
 ✓ INTERMEDIATE CLASS - Friday, October 10 @ 6:15pm -- Coach Hashim
+
+The checkmark (✓) indicates the user's selection. Extract ONLY from the line that has the checkmark (✓).
 
 Extract the EXACT information from the line that has the checkmark (✓). Parse:
 - Class name: "INTERMEDIATE CLASS"
@@ -301,12 +306,7 @@ Extract the EXACT information from the line that has the checkmark (✓). Parse:
 - Time: "6:15pm" → convert to "18:15"
 - Coach: "Coach Hashim" or just "Hashim"
 
-The email structure typically includes:
-1. A CLASS SCHEDULE section with multiple options
-2. The user's selection marked with a checkmark (✓)
-3. The selected class line contains all the details you need
-
-Look specifically for the line with the checkmark in the CLASS SCHEDULE section.
+WARNING: Do not extract from any line without a checkmark (✓). Only extract from the line that has the checkmark symbol.
 
 If any information is not available, use null for that field.
 
