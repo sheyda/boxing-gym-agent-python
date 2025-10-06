@@ -224,6 +224,59 @@ async def get_recent_logs():
     }
 
 
+@app.get("/debug/secrets")
+async def debug_secrets():
+    """Debug endpoint to check secret loading sources."""
+    import os
+    from src.config.secret_manager import secret_manager
+    from src.config.settings import settings
+    
+    # Check environment variables
+    env_vars = {
+        'GOOGLE_CLIENT_ID': os.getenv('GOOGLE_CLIENT_ID'),
+        'GOOGLE_CLIENT_SECRET': os.getenv('GOOGLE_CLIENT_SECRET'),
+        'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
+        'GMAIL_USER_EMAIL': os.getenv('GMAIL_USER_EMAIL')
+    }
+    
+    # Check Secret Manager
+    secret_manager_vars = {}
+    secret_names = ['google-client-id', 'google-client-secret', 'openai-api-key', 'gmail-user-email']
+    for secret_name in secret_names:
+        try:
+            secret_manager_vars[secret_name] = secret_manager.get_secret(secret_name)
+        except Exception as e:
+            secret_manager_vars[secret_name] = f"Error: {e}"
+    
+    # Check settings object
+    settings_vars = {
+        'google_client_id': getattr(settings, 'google_client_id', None),
+        'google_client_secret': getattr(settings, 'google_client_secret', None),
+        'openai_api_key': getattr(settings, 'openai_api_key', None),
+        'gmail_user_email': getattr(settings, 'gmail_user_email', None)
+    }
+    
+    # Mask sensitive values
+    def mask_value(value):
+        if not value:
+            return None
+        if isinstance(value, str) and len(value) > 10:
+            return value[:10] + "..."
+        return value
+    
+    return {
+        "environment_variables": {k: mask_value(v) for k, v in env_vars.items()},
+        "secret_manager": {k: mask_value(v) for k, v in secret_manager_vars.items()},
+        "settings_object": {k: mask_value(v) for k, v in settings_vars.items()},
+        "analysis": {
+            "using_secret_manager": any(secret_manager_vars.values()),
+            "using_env_vars": any(env_vars.values()),
+            "secret_manager_count": sum(1 for v in secret_manager_vars.values() if v and not str(v).startswith("Error")),
+            "env_var_count": sum(1 for v in env_vars.values() if v)
+        }
+    }
+
+
 if __name__ == "__main__":
     # For local development
     uvicorn.run(
