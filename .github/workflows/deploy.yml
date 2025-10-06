@@ -10,7 +10,7 @@ env:
   PROJECT_ID: boxing-gym-agent
   SERVICE_NAME: boxing-gym-agent
   REGION: us-central1
-  REGISTRY: gcr.io
+  REGISTRY: us-docker.pkg.dev
 
 jobs:
   test:
@@ -61,23 +61,23 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Configure Docker for GCR
-      run: gcloud auth configure-docker
+    - name: Configure Docker for Artifact Registry
+      run: gcloud auth configure-docker us-docker.pkg.dev
 
     - name: Build Docker image
       run: |
-        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
-        docker tag ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker tag ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:latest
 
     - name: Push Docker image
       run: |
-        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:latest
 
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy ${{ env.SERVICE_NAME }} \
-          --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }} \
           --platform managed \
           --region ${{ env.REGION }} \
           --allow-unauthenticated \
