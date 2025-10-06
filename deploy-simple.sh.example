@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Boxing Gym Agent - Simple Cloud Run Deployment
+# This script deploys the agent using regular environment variables
+# 
+# IMPORTANT: This is a template file. Copy to deploy-simple.sh and fill in your actual values.
+
+set -e
+
+PROJECT_ID="your-project-id"
+REGION="us-central1"
+SERVICE_NAME="boxing-gym-agent"
+
+echo "🚀 Deploying Boxing Gym Agent with environment variables..."
+
+# Set project
+gcloud config set project $PROJECT_ID
+
+# Build and push image
+echo "📦 Building and pushing image..."
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME
+
+# Deploy to Cloud Run with environment variables
+echo "🚀 Deploying to Cloud Run..."
+
+gcloud run deploy $SERVICE_NAME \
+    --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --memory 1Gi \
+    --cpu 1 \
+    --timeout 3600 \
+    --max-instances 10 \
+    --port 8080 \
+    --set-env-vars="GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET,GOOGLE_REDIRECT_URI=http://localhost:8080/oauth2callback,GMAIL_USER_EMAIL=your-email@gmail.com,GMAIL_QUERY=from:boxing_gym@gmail.com subject:class registration,BOXING_GYM_EMAIL=boxing_gym@gmail.com,BOXING_GYM_NAME=Boxing Gym,CALENDAR_ID=primary,EVENT_DURATION_MINUTES=60,TIMEZONE=America/New_York,LLM_PROVIDER=openai,OPENAI_API_KEY=YOUR_OPENAI_API_KEY,LLM_MODEL=gpt-4-turbo-preview,CHECK_INTERVAL_MINUTES=5,LOG_LEVEL=INFO,MAX_EMAILS_PER_CHECK=10,CONFIDENCE_THRESHOLD=0.7,ENABLE_AUTO_REGISTRATION=false,ENABLE_CALENDAR_CREATION=true"
+
+# Get service URL
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')
+echo "✅ Cloud Run service deployed at: $SERVICE_URL"
+
+echo "Waiting for service to become ready..."
+# Simple loop to check health endpoint until it returns 200
+for i in $(seq 1 30); do
+    HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/health")
+    if [ "$HEALTH_STATUS" -eq 200 ]; then
+        echo "✅ Service is ready and healthy!"
+        break
+    else
+        echo "⏳ Service not yet ready (HTTP $HEALTH_STATUS). Retrying in 5 seconds..."
+        sleep 5
+    fi
+    if [ "$i" -eq 30 ]; then
+        echo "❌ Service did not become healthy within the timeout."
+        exit 1
+    fi
+done
+
+echo "Deployment complete!"
