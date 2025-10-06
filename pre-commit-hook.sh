@@ -7,7 +7,8 @@ echo "🔍 Checking for secrets in staged files..."
 
 # Check for common secret patterns
 SECRET_PATTERNS=(
-    "sk-[a-zA-Z0-9]{20,}"           # OpenAI API keys
+    "sk-proj-[a-zA-Z0-9_-]+"       # OpenAI API keys (new format)
+    "sk-[a-zA-Z0-9]{20,}"          # OpenAI API keys (legacy format)
     "sk-ant-[a-zA-Z0-9_-]+"        # Anthropic API keys
     "GOCSPX-[a-zA-Z0-9_-]+"        # Google OAuth2 client secrets
     "ya29\.[a-zA-Z0-9_-]+"         # Gmail OAuth2 tokens
@@ -17,7 +18,7 @@ SECRET_PATTERNS=(
 FOUND_SECRETS=false
 
 for pattern in "${SECRET_PATTERNS[@]}"; do
-    if git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null; then
+    if git diff --cached --name-only | xargs grep -lE "$pattern" 2>/dev/null; then
         echo "❌ Found potential secret matching pattern: $pattern"
         FOUND_SECRETS=true
     fi
