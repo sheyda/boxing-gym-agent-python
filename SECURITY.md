@@ -27,9 +27,31 @@ Use these template files as starting points:
 
 ### Production Deployment
 
-**Use Google Cloud Secret Manager** for production deployments:
+**Use Google Cloud Secret Manager** for production deployments, but only for truly sensitive data:
 
-1. Create secrets using the template script:
+#### Option 1: Minimal Secrets (Recommended)
+Store only the truly sensitive data in Secret Manager:
+
+1. Create minimal secrets:
+   ```bash
+   cp create-secrets-minimal.sh.example create-secrets-minimal.sh
+   # Edit with your actual sensitive values only
+   chmod +x create-secrets-minimal.sh
+   ./create-secrets-minimal.sh
+   ```
+
+2. Deploy with hybrid approach:
+   ```bash
+   cp deploy-hybrid.sh.example deploy-hybrid.sh
+   # Edit with your actual values
+   chmod +x deploy-hybrid.sh
+   ./deploy-hybrid.sh
+   ```
+
+#### Option 2: Full Secrets (Over-engineered)
+Store all configuration in Secret Manager (not recommended):
+
+1. Create all secrets:
    ```bash
    cp create-secrets.sh.example create-secrets.sh
    # Edit create-secrets.sh with your actual values
@@ -44,6 +66,19 @@ Use these template files as starting points:
    chmod +x deploy-with-secrets.sh
    ./deploy-with-secrets.sh
    ```
+
+### What Should Be in Secret Manager?
+
+**✅ Store in Secret Manager:**
+- Google OAuth2 client ID and secret
+- OpenAI/Anthropic API keys
+- Gmail OAuth2 tokens
+- Personal email addresses (privacy)
+
+**❌ Don't store in Secret Manager:**
+- Configuration values (timeouts, intervals, log levels)
+- Non-sensitive settings (timezone, calendar ID)
+- Default values (model names, feature flags)
 
 ### Local Development
 

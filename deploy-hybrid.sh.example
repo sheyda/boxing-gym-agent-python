@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Boxing Gym Agent - Hybrid Deployment (Secrets + Environment Variables)
+# This script uses Secret Manager for truly sensitive data and environment variables for configuration
+
+set -e
+
+PROJECT_ID="your-project-id"
+REGION="us-central1"
+SERVICE_NAME="boxing-gym-agent"
+
+echo "🚀 Deploying Boxing Gym Agent with hybrid configuration..."
+
+# Set project
+gcloud config set project $PROJECT_ID
+
+# Build and push image
+echo "📦 Building and pushing image..."
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME
+
+# Deploy to Cloud Run with hybrid approach
+echo "🚀 Deploying to Cloud Run..."
+
+gcloud beta run deploy $SERVICE_NAME \
+    --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --memory 1Gi \
+    --cpu 1 \
+    --timeout 3600 \
+    --max-instances 10 \
+    --port 8080 \
+    --set-secrets="GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,OPENAI_API_KEY=openai-api-key:latest,GMAIL_TOKENS=gmail-tokens:latest,GMAIL_USER_EMAIL=gmail-user-email:latest" \
+    --set-env-vars="GOOGLE_REDIRECT_URI=http://localhost:8080/oauth2callback,GMAIL_QUERY=from:boxing_gym@gmail.com subject:class registration,BOXING_GYM_EMAIL=boxing_gym@gmail.com,BOXING_GYM_NAME=Boxing Gym,CALENDAR_ID=primary,EVENT_DURATION_MINUTES=60,TIMEZONE=America/New_York,LLM_PROVIDER=openai,LLM_MODEL=gpt-4-turbo-preview,CHECK_INTERVAL_MINUTES=5,LOG_LEVEL=INFO,MAX_EMAILS_PER_CHECK=10,CONFIDENCE_THRESHOLD=0.7,ENABLE_AUTO_REGISTRATION=false,ENABLE_CALENDAR_CREATION=true" \
+    --service-account="boxing-gym-agent-sa@$PROJECT_ID.iam.gserviceaccount.com"
+
+# Get service URL
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')
+echo "✅ Cloud Run service deployed at: $SERVICE_URL"
+
+echo "Deployment complete!"
