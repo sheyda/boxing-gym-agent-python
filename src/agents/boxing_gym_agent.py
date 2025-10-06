@@ -215,10 +215,9 @@ class BoxingGymAgent:
         if is_google_forms_confirmation:
             logger.info("Processing Google Forms confirmation email")
             
-            # If LLM didn't extract class details, try to extract them manually
-            if not classification.class_details or not classification.class_details.class_name:
-                logger.info("Attempting to extract class details from Google Forms confirmation")
-                classification.class_details = await self._extract_google_forms_details(processed_email)
+            # Always extract from Google Forms using specialized prompt
+            logger.info("Extracting class details from Google Forms confirmation using specialized extraction")
+            classification.class_details = await self._extract_google_forms_details(processed_email)
         
         if not classification.class_details:
             logger.warning("No class details found in confirmation email")
