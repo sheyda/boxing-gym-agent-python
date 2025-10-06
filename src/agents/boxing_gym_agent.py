@@ -291,6 +291,10 @@ CRITICAL: Look for the CLASS SCHEDULE section in the email. The user's selected 
 
 For example: "INTERMEDIATE CLASS - Friday, October 10 @ 6:15pm -- Coach Hashim"
 
+IMPORTANT: The selected class line will have a checkmark (✓) symbol BEFORE the class description. Look for this pattern:
+
+✓ INTERMEDIATE CLASS - Friday, October 10 @ 6:15pm -- Coach Hashim
+
 Extract the EXACT information from the line that has the checkmark (✓). Parse:
 - Class name: "INTERMEDIATE CLASS"
 - Date: "Friday, October 10" → convert to "2025-10-10"
@@ -302,7 +306,7 @@ The email structure typically includes:
 2. The user's selection marked with a checkmark (✓)
 3. The selected class line contains all the details you need
 
-Look specifically for the line with the checkmark (✓) in the CLASS SCHEDULE section.
+Look specifically for the line with the checkmark in the CLASS SCHEDULE section.
 
 If any information is not available, use null for that field.
 
