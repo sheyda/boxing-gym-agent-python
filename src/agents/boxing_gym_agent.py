@@ -11,7 +11,7 @@ from ..services.gmail_service import GmailService
 from ..services.llm_service import LLMService
 from ..services.calendar_service import CalendarService
 from ..config.settings import settings, validate_settings
-from ..models.email_models import ProcessedEmail, AgentStatus
+from ..models.email_models import ProcessedEmail, AgentStatus, ClassDetails
 
 
 class BoxingGymAgent:
@@ -202,14 +202,35 @@ class BoxingGymAgent:
             logger.info("Auto-registration is enabled but not yet implemented")
     
     async def _handle_confirmation_email(self, processed_email: ProcessedEmail) -> None:
-        """Handle confirmation emails."""
+        """Handle confirmation emails, especially Google Forms confirmations."""
         classification = processed_email.classification
         
         logger.info(f"Found confirmation email: {processed_email.metadata.subject}")
         
+        # Check if this is a Google Forms confirmation
+        is_google_forms_confirmation = (
+            "Thanks for filling out this form: Boxing Class Registration" in processed_email.metadata.subject
+        )
+        
+        if is_google_forms_confirmation:
+            logger.info("Processing Google Forms confirmation email")
+            
+            # If LLM didn't extract class details, try to extract them manually
+            if not classification.class_details or not classification.class_details.class_name:
+                logger.info("Attempting to extract class details from Google Forms confirmation")
+                classification.class_details = await self._extract_google_forms_details(processed_email)
+        
         if not classification.class_details:
             logger.warning("No class details found in confirmation email")
             return
+        
+        # Log extracted class details
+        logger.info("Class details extracted:")
+        logger.info(f"  - Class: {classification.class_details.class_name}")
+        logger.info(f"  - Date: {classification.class_details.date}")
+        logger.info(f"  - Time: {classification.class_details.time}")
+        logger.info(f"  - Instructor: {classification.class_details.instructor}")
+        logger.info(f"  - Location: {classification.class_details.location}")
         
         # Create calendar event if enabled
         if settings.enable_calendar_creation:
@@ -221,6 +242,8 @@ class BoxingGymAgent:
                 
                 if event:
                     logger.info(f"Created calendar event: {event['id']}")
+                    logger.info(f"Event title: {event.get('summary', 'N/A')}")
+                    logger.info(f"Event start: {event.get('start', {}).get('dateTime', 'N/A')}")
                     self.status.successful_actions += 1
                 else:
                     logger.info("Calendar event already exists or creation skipped")
@@ -228,9 +251,95 @@ class BoxingGymAgent:
             except Exception as e:
                 logger.error(f"Error creating calendar event: {e}")
                 self.status.errors_count += 1
+        else:
+            logger.info("Calendar creation is disabled - skipping event creation")
         
         # Mark email as read
         self.gmail_service.mark_as_read(processed_email.metadata.id)
+    
+    async def _extract_google_forms_details(self, processed_email: ProcessedEmail) -> Optional[ClassDetails]:
+        """Extract class details from Google Forms confirmation email using LLM."""
+        try:
+            logger.info("Using LLM to extract class details from Google Forms confirmation")
+            
+            # Create a specialized prompt for Google Forms extraction
+            prompt = f"""
+You are an AI assistant that extracts class details from Google Forms confirmation emails.
+
+Email Details:
+- Subject: {processed_email.metadata.subject}
+- Body: {processed_email.metadata.body}
+
+This is a Google Forms confirmation email for a boxing class registration. Please extract the following information from the email body and respond with a JSON object:
+
+{{
+    "class_name": "Name of the class (e.g., 'Boxing Class', 'Kickboxing', 'Fitness Training')",
+    "date": "Date in YYYY-MM-DD format",
+    "time": "Time in HH:MM format",
+    "instructor": "Instructor/coach name",
+    "location": "Location/address",
+    "class_type": "Type of class (e.g., 'boxing', 'kickboxing', 'fitness')",
+    "difficulty": "Difficulty level if mentioned",
+    "duration_minutes": "Duration in minutes if mentioned",
+    "equipment_needed": ["List of equipment needed"],
+    "notes": "Any additional notes"
+}}
+
+Look for:
+- Class name in the form response
+- Date and time information
+- Instructor/coach name
+- Location or address
+- Any special instructions or notes
+
+If any information is not available, use null for that field.
+
+Respond with valid JSON only, no additional text.
+"""
+            
+            # Use LLM to extract details
+            if settings.llm_provider == "openai":
+                response = self.llm_service.client.chat.completions.create(
+                    model=settings.llm_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1
+                )
+                llm_response = response.choices[0].message.content
+            elif settings.llm_provider == "anthropic":
+                response = self.llm_service.client.messages.create(
+                    model=settings.llm_model,
+                    max_tokens=1000,
+                    temperature=0.1,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                llm_response = response.content[0].text
+            else:
+                raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
+            
+            # Parse the JSON response
+            import json
+            extracted_data = json.loads(llm_response)
+            
+            # Create ClassDetails object
+            class_details = ClassDetails(
+                class_name=extracted_data.get("class_name"),
+                date=extracted_data.get("date"),
+                time=extracted_data.get("time"),
+                instructor=extracted_data.get("instructor"),
+                location=extracted_data.get("location"),
+                class_type=extracted_data.get("class_type"),
+                difficulty=extracted_data.get("difficulty"),
+                duration_minutes=extracted_data.get("duration_minutes"),
+                equipment_needed=extracted_data.get("equipment_needed"),
+                notes=extracted_data.get("notes")
+            )
+            
+            logger.info("Successfully extracted class details from Google Forms confirmation")
+            return class_details
+            
+        except Exception as e:
+            logger.error(f"Error extracting Google Forms details: {e}")
+            return None
     
     async def _handle_cancellation_email(self, processed_email: ProcessedEmail) -> None:
         """Handle cancellation emails."""

@@ -68,28 +68,49 @@ Email Details:
 Please analyze this email and respond with a JSON object containing:
 
 1. email_type: One of ["registration_form", "confirmation", "cancellation", "waitlist", "other"]
+   - "confirmation": For Google Forms confirmation emails with subject "Thanks for filling out this form: Boxing Class Registration"
+   - "registration_form": For emails containing registration forms or links
+   - "cancellation": For class cancellation notices
+   - "waitlist": For waitlist notifications
+   - "other": For any other email types
+
 2. confidence: A float between 0.0 and 1.0 indicating your confidence in the classification
+
 3. class_details: If this is a class-related email, extract:
-   - class_name: Name of the class
-   - date: Date of the class (if mentioned)
-   - time: Time of the class (if mentioned)
-   - instructor: Instructor name (if mentioned)
-   - location: Location (if mentioned)
+   - class_name: Name of the class (e.g., "Boxing Class", "Kickboxing", "Fitness Training")
+   - date: Date of the class in YYYY-MM-DD format (if mentioned)
+   - time: Time of the class in HH:MM format (if mentioned)
+   - instructor: Instructor/coach name (if mentioned)
+   - location: Location/address (if mentioned)
    - class_type: Type of class (e.g., "boxing", "kickboxing", "fitness")
    - difficulty: Difficulty level (if mentioned)
    - duration_minutes: Duration in minutes (if mentioned)
    - equipment_needed: List of equipment needed (if mentioned)
    - notes: Any additional notes
+
 4. action_required: One of ["register", "create_calendar", "cancel_event", "waitlist", "none"]
+   - "create_calendar": For confirmation emails that should create calendar events
+   - "register": For registration forms that need to be filled out
+   - "cancel_event": For cancellation emails
+   - "waitlist": For waitlist notifications
+   - "none": For emails that don't require action
+
 5. form_links: List of any form URLs found in the email
 6. registration_url: Primary registration URL if found
 7. reasoning: Brief explanation of your classification and reasoning
+
+Special attention for Google Forms confirmations:
+- Look for emails with subject "Thanks for filling out this form: Boxing Class Registration"
+- Extract class details from the form response data
+- Look for date, time, instructor, and class type information
+- These emails should be classified as "confirmation" with action_required "create_calendar"
 
 Focus on:
 - Boxing gym class registrations and confirmations
 - Class schedules and details
 - Registration forms and links
-- Confirmation emails with class details
+- Google Forms confirmation emails with class details
+- Confirmation emails that should trigger calendar event creation
 
 Respond with valid JSON only, no additional text.
 """
