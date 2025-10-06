@@ -74,6 +74,11 @@ jobs:
         docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:${{ github.sha }}
         docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/gcr.io/${{ env.SERVICE_NAME }}:latest
 
+    - name: Build environment variables
+      run: |
+        ./scripts/build-env-vars.sh
+        echo "ENV_VARS=$(cat deploy-env-vars.txt)" >> $GITHUB_ENV
+
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -87,7 +92,7 @@ jobs:
           --max-instances 10 \
           --port 8080 \
           --set-secrets="GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,OPENAI_API_KEY=openai-api-key:latest,GMAIL_TOKENS=gmail-tokens:latest,GMAIL_USER_EMAIL=gmail-user-email:latest" \
-          --set-env-vars="GOOGLE_REDIRECT_URI=http://localhost:8080/oauth2callback,GMAIL_QUERY=from:boxing_gym@gmail.com subject:class registration,BOXING_GYM_EMAIL=boxing_gym@gmail.com,BOXING_GYM_NAME=Boxing Gym,CALENDAR_ID=primary,EVENT_DURATION_MINUTES=60,TIMEZONE=America/New_York,LLM_PROVIDER=openai,LLM_MODEL=gpt-4-turbo-preview,CHECK_INTERVAL_MINUTES=5,LOG_LEVEL=INFO,MAX_EMAILS_PER_CHECK=10,CONFIDENCE_THRESHOLD=0.7,ENABLE_AUTO_REGISTRATION=false,ENABLE_CALENDAR_CREATION=true" \
+          --set-env-vars="${{ env.ENV_VARS }}" \
           --service-account="boxing-gym-agent-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
 
     - name: Get service URL

@@ -85,6 +85,9 @@ htmlcov/
 # pipenv
 Pipfile.lock
 
+# Build artifacts
+deploy-env-vars.txt
+
 # PEP 582
 __pypackages__/
 
