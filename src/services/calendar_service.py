@@ -126,9 +126,33 @@ class CalendarService:
                 elif '-' in date_str:
                     # YYYY-MM-DD format
                     date_obj = datetime.fromisoformat(date_str)
+                elif ',' in date_str and any(month in date_str for month in ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']):
+                    # "Friday, October 10" format
+                    try:
+                        # Extract month and day from "Friday, October 10"
+                        parts = date_str.split(',')
+                        if len(parts) >= 2:
+                            month_day = parts[1].strip()
+                            month_name, day = month_day.split()
+                            month_num = {
+                                'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
+                                'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
+                            }.get(month_name, 1)
+                            # Assume current year
+                            year = datetime.now().year
+                            date_obj = datetime(year, month_num, int(day))
+                        else:
+                            raise ValueError("Invalid date format")
+                    except (ValueError, KeyError):
+                        # Fallback to default
+                        date_obj = datetime.now().date()
                 else:
                     # Try to parse as ISO format
-                    date_obj = datetime.fromisoformat(date_str)
+                    try:
+                        date_obj = datetime.fromisoformat(date_str)
+                    except ValueError:
+                        # Fallback to today
+                        date_obj = datetime.now().date()
             else:
                 # Default to today
                 date_obj = datetime.now().date()

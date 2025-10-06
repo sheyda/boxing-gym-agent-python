@@ -273,7 +273,7 @@ Email Details:
 This is a Google Forms confirmation email for a boxing class registration. The email contains the user's form responses. Please carefully extract the following information from the email body and respond with a JSON object:
 
 {{
-    "class_name": "Exact class name from the form (e.g., 'INTERMEDIATE CLASS', 'BEGINNER BOXING', 'KICKBOXING')",
+    "class_name": "Exact class name from the form (e.g., 'INTERMEDIATE CLASS', 'BEGINNER CLASS', 'ADVANCE CLASS')",
     "date": "Date in YYYY-MM-DD format (e.g., '2025-10-10' for Friday, October 10)",
     "time": "Time in HH:MM format (e.g., '18:15' for 6:15pm)",
     "instructor": "Instructor/coach name (e.g., 'Coach Hashim', 'Hashim')",
@@ -285,14 +285,24 @@ This is a Google Forms confirmation email for a boxing class registration. The e
     "notes": "Any additional notes"
 }}
 
-IMPORTANT: Look for the actual form responses in the email body. The email should contain the user's selections/answers from the Google Form. Common patterns to look for:
+CRITICAL: Look for the CLASS SCHEDULE section in the email. The user's selected class will be marked with a checkmark (✓) or similar indicator. The format is typically:
 
-- Class selection: "INTERMEDIATE CLASS", "BEGINNER CLASS", etc.
-- Date: "Friday, October 10", "Oct 10", "10/10/2025", etc.
-- Time: "6:15pm", "18:15", "6:15 PM", etc.
-- Coach/Instructor: "Coach Hashim", "Hashim", "Instructor: Hashim", etc.
+"CLASS_NAME - Day, Date @ Time -- Coach Name"
 
-The email body should contain the form responses showing what the user selected. Extract the actual values they chose, not generic descriptions.
+For example: "INTERMEDIATE CLASS - Friday, October 10 @ 6:15pm -- Coach Hashim"
+
+Extract the EXACT information from the line that has the checkmark (✓). Parse:
+- Class name: "INTERMEDIATE CLASS"
+- Date: "Friday, October 10" → convert to "2025-10-10"
+- Time: "6:15pm" → convert to "18:15"
+- Coach: "Coach Hashim" or just "Hashim"
+
+The email structure typically includes:
+1. A CLASS SCHEDULE section with multiple options
+2. The user's selection marked with a checkmark (✓)
+3. The selected class line contains all the details you need
+
+Look specifically for the line with the checkmark (✓) in the CLASS SCHEDULE section.
 
 If any information is not available, use null for that field.
 
