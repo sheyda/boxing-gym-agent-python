@@ -17,8 +17,21 @@ SECRET_PATTERNS=(
 
 FOUND_SECRETS=false
 
+# Files to ignore during secret scan (documentation files with examples)
+IGNORE_FILES=(
+    "DEPLOYMENT_GUIDE.md"
+    "SECURITY_CLEANUP_SUMMARY.md" 
+    "SECURITY.md"
+    "GITHUB_ACTIONS_SETUP.md"
+    "SECRET_MANAGER_CLEANUP.md"
+)
+
+# Convert ignore files to a grep-friendly regex
+IGNORE_REGEX=$(printf "|%s" "${IGNORE_FILES[@]}")
+IGNORE_REGEX=${IGNORE_REGEX:1} # Remove leading '|'
+
 for pattern in "${SECRET_PATTERNS[@]}"; do
-    if git diff --cached --name-only | xargs grep -lE "$pattern" 2>/dev/null; then
+    if git diff --cached --name-only | grep -Ev "$IGNORE_REGEX" | xargs grep -lE "$pattern" 2>/dev/null; then
         echo "❌ Found potential secret matching pattern: $pattern"
         FOUND_SECRETS=true
     fi
