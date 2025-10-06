@@ -334,7 +334,9 @@ Respond with valid JSON only, no additional text.
             
             # Parse the JSON response
             import json
+            logger.info(f"Raw LLM response: {llm_response}")
             extracted_data = json.loads(llm_response)
+            logger.info(f"Parsed extraction data: {extracted_data}")
             
             # Create ClassDetails object
             class_details = ClassDetails(
