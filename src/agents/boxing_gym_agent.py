@@ -334,7 +334,18 @@ Respond with valid JSON only, no additional text.
             # Parse the JSON response
             import json
             logger.info(f"Raw LLM response: {llm_response}")
-            extracted_data = json.loads(llm_response)
+            
+            # Strip markdown code blocks if present
+            llm_response_clean = llm_response.strip()
+            if llm_response_clean.startswith("```json"):
+                llm_response_clean = llm_response_clean[7:]  # Remove ```json
+            if llm_response_clean.startswith("```"):
+                llm_response_clean = llm_response_clean[3:]  # Remove ```
+            if llm_response_clean.endswith("```"):
+                llm_response_clean = llm_response_clean[:-3]  # Remove trailing ```
+            llm_response_clean = llm_response_clean.strip()
+            
+            extracted_data = json.loads(llm_response_clean)
             logger.info(f"Parsed extraction data: {extracted_data}")
             
             # Create ClassDetails object
