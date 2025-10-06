@@ -41,6 +41,9 @@ venv.bak/
 tokens.json
 credentials.json
 
+# Service account keys
+github-actions-key.json
+
 # Deployment scripts with secrets
 deploy-simple.sh
 create-secrets.sh

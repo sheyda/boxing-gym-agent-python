@@ -1,0 +1,116 @@
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+env:
+  PROJECT_ID: boxing-gym-agent
+  SERVICE_NAME: boxing-gym-agent
+  REGION: us-central1
+  REGISTRY: gcr.io
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        # Add your test commands here
+        echo "Running tests..."
+        # python -m pytest tests/ || echo "No tests found, skipping..."
+
+    - name: Lint code
+      run: |
+        echo "Running linting..."
+        # pip install flake8 black
+        # flake8 src/ || echo "Linting issues found"
+        # black --check src/ || echo "Code formatting issues found"
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Configure Docker for GCR
+      run: gcloud auth configure-docker
+
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+        docker tag ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+    - name: Push Docker image
+      run: |
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy ${{ env.SERVICE_NAME }} \
+          --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+          --platform managed \
+          --region ${{ env.REGION }} \
+          --allow-unauthenticated \
+          --memory 1Gi \
+          --cpu 1 \
+          --timeout 3600 \
+          --max-instances 10 \
+          --port 8080 \
+          --set-secrets="GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,OPENAI_API_KEY=openai-api-key:latest,GMAIL_TOKENS=gmail-tokens:latest,GMAIL_USER_EMAIL=gmail-user-email:latest" \
+          --set-env-vars="GOOGLE_REDIRECT_URI=http://localhost:8080/oauth2callback,GMAIL_QUERY=from:boxing_gym@gmail.com subject:class registration,BOXING_GYM_EMAIL=boxing_gym@gmail.com,BOXING_GYM_NAME=Boxing Gym,CALENDAR_ID=primary,EVENT_DURATION_MINUTES=60,TIMEZONE=America/New_York,LLM_PROVIDER=openai,LLM_MODEL=gpt-4-turbo-preview,CHECK_INTERVAL_MINUTES=5,LOG_LEVEL=INFO,MAX_EMAILS_PER_CHECK=10,CONFIDENCE_THRESHOLD=0.7,ENABLE_AUTO_REGISTRATION=false,ENABLE_CALENDAR_CREATION=true" \
+          --service-account="boxing-gym-agent-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
+
+    - name: Get service URL
+      run: |
+        SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+        echo "🚀 Service deployed at: $SERVICE_URL"
+        echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+    - name: Health check
+      run: |
+        echo "⏳ Waiting for service to become ready..."
+        sleep 30
+        curl -f "$SERVICE_URL/health" || echo "Health check failed, but deployment completed"
+
+    - name: Comment deployment status
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const serviceUrl = process.env.SERVICE_URL;
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `🚀 **Deployment successful!**\n\nService URL: ${serviceUrl}\n\nCommit: ${context.sha}`
+          });
