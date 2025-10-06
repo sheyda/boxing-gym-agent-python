@@ -31,7 +31,7 @@ class BoxingGymAgent:
         )
     
     async def initialize(self) -> None:
-        """Initialize the agent with all required services."""
+        """Initialize the agent with all re ired services."""
         try:
             # Validate settings
             validate_settings()
@@ -270,27 +270,29 @@ Email Details:
 - Subject: {processed_email.metadata.subject}
 - Body: {processed_email.metadata.body}
 
-This is a Google Forms confirmation email for a boxing class registration. Please extract the following information from the email body and respond with a JSON object:
+This is a Google Forms confirmation email for a boxing class registration. The email contains the user's form responses. Please carefully extract the following information from the email body and respond with a JSON object:
 
 {{
-    "class_name": "Name of the class (e.g., 'Boxing Class', 'Kickboxing', 'Fitness Training')",
-    "date": "Date in YYYY-MM-DD format",
-    "time": "Time in HH:MM format",
-    "instructor": "Instructor/coach name",
-    "location": "Location/address",
+    "class_name": "Exact class name from the form (e.g., 'INTERMEDIATE CLASS', 'BEGINNER BOXING', 'KICKBOXING')",
+    "date": "Date in YYYY-MM-DD format (e.g., '2025-10-10' for Friday, October 10)",
+    "time": "Time in HH:MM format (e.g., '18:15' for 6:15pm)",
+    "instructor": "Instructor/coach name (e.g., 'Coach Hashim', 'Hashim')",
+    "location": "Location/address if mentioned",
     "class_type": "Type of class (e.g., 'boxing', 'kickboxing', 'fitness')",
-    "difficulty": "Difficulty level if mentioned",
+    "difficulty": "Difficulty level (e.g., 'intermediate', 'beginner', 'advanced')",
     "duration_minutes": "Duration in minutes if mentioned",
     "equipment_needed": ["List of equipment needed"],
     "notes": "Any additional notes"
 }}
 
-Look for:
-- Class name in the form response
-- Date and time information
-- Instructor/coach name
-- Location or address
-- Any special instructions or notes
+IMPORTANT: Look for the actual form responses in the email body. The email should contain the user's selections/answers from the Google Form. Common patterns to look for:
+
+- Class selection: "INTERMEDIATE CLASS", "BEGINNER CLASS", etc.
+- Date: "Friday, October 10", "Oct 10", "10/10/2025", etc.
+- Time: "6:15pm", "18:15", "6:15 PM", etc.
+- Coach/Instructor: "Coach Hashim", "Hashim", "Instructor: Hashim", etc.
+
+The email body should contain the form responses showing what the user selected. Extract the actual values they chose, not generic descriptions.
 
 If any information is not available, use null for that field.
 

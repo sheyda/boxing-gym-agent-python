@@ -117,16 +117,18 @@ class CalendarService:
         try:
             # Parse date
             if class_details.date:
-                if '/' in class_details.date:
+                date_str = class_details.date.strip()
+                
+                if '/' in date_str:
                     # MM/DD/YYYY format
-                    month, day, year = class_details.date.split('/')
+                    month, day, year = date_str.split('/')
                     date_obj = datetime(int(year), int(month), int(day))
-                elif '-' in class_details.date:
+                elif '-' in date_str:
                     # YYYY-MM-DD format
-                    date_obj = datetime.fromisoformat(class_details.date)
+                    date_obj = datetime.fromisoformat(date_str)
                 else:
                     # Try to parse as ISO format
-                    date_obj = datetime.fromisoformat(class_details.date)
+                    date_obj = datetime.fromisoformat(date_str)
             else:
                 # Default to today
                 date_obj = datetime.now().date()
@@ -138,7 +140,7 @@ class CalendarService:
                 # Handle various time formats
                 if ':' in time_str:
                     if 'am' in time_str.lower() or 'pm' in time_str.lower():
-                        # 12-hour format
+                        # 12-hour format (e.g., "6:15pm", "6:15 PM")
                         time_part = time_str.replace('am', '').replace('pm', '').replace('AM', '').replace('PM', '').strip()
                         hour, minute = map(int, time_part.split(':'))
                         
@@ -147,14 +149,16 @@ class CalendarService:
                         elif 'am' in time_str.lower() and hour == 12:
                             hour = 0
                     else:
-                        # 24-hour format
+                        # 24-hour format (e.g., "18:15")
                         hour, minute = map(int, time_str.split(':'))
                     
                     # Combine date and time
                     return datetime.combine(date_obj, datetime.min.time().replace(hour=hour, minute=minute))
                 else:
-                    # Just hour
+                    # Just hour (e.g., "6" for 6 PM)
                     hour = int(time_str)
+                    if hour < 12:  # Assume PM if hour < 12
+                        hour += 12
                     return datetime.combine(date_obj, datetime.min.time().replace(hour=hour))
             else:
                 # Default to 6 PM if no time specified
@@ -162,6 +166,7 @@ class CalendarService:
                 
         except (ValueError, AttributeError) as e:
             logger.error(f"Error parsing class time: {e}")
+            logger.error(f"Date: {class_details.date}, Time: {class_details.time}")
             # Default to tomorrow at 6 PM
             return datetime.now().replace(hour=18, minute=0, second=0, microsecond=0) + timedelta(days=1)
     
