@@ -153,6 +153,57 @@ class GmailService:
             logger.error(f"Error marking email as read: {error}")
             raise
     
+    def mark_as_processed(self, message_id: str, label_name: str = "boxing-gym-processed") -> None:
+        """Mark an email as processed by adding a Gmail label."""
+        if not self.service:
+            raise RuntimeError("Gmail service not authenticated")
+        
+        try:
+            # Get or create the label
+            label_id = self._get_or_create_label(label_name)
+            
+            # Add label to the message
+            self.service.users().messages().modify(
+                userId='me',
+                id=message_id,
+                body={'addLabelIds': [label_id]}
+            ).execute()
+            logger.info(f"Marked email {message_id} as processed with label '{label_name}'")
+        except HttpError as error:
+            logger.error(f"Error marking email {message_id} as processed: {error}")
+    
+    def _get_or_create_label(self, label_name: str) -> str:
+        """Get or create a Gmail label and return its ID."""
+        if not self.service:
+            raise RuntimeError("Gmail service not authenticated")
+        
+        try:
+            # Try to find existing label
+            results = self.service.users().labels().list(userId='me').execute()
+            labels = results.get('labels', [])
+            
+            for label in labels:
+                if label['name'] == label_name:
+                    logger.debug(f"Found existing label: {label_name}")
+                    return label['id']
+            
+            # Create new label if not found
+            label_object = {
+                'name': label_name,
+                'labelListVisibility': 'labelShow',
+                'messageListVisibility': 'show'
+            }
+            created_label = self.service.users().labels().create(
+                userId='me',
+                body=label_object
+            ).execute()
+            logger.info(f"Created new label: {label_name}")
+            return created_label['id']
+            
+        except HttpError as error:
+            logger.error(f"Error getting or creating label: {error}")
+            raise
+    
     def _parse_email(self, message: Dict[str, Any]) -> EmailMetadata:
         """Parse Gmail message into EmailMetadata."""
         headers = message['payload'].get('headers', [])

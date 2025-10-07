@@ -145,10 +145,13 @@ class BoxingGymAgent:
             # Process based on classification
             await self._handle_classified_email(processed_email)
             
-            # Mark as processed
+            # Mark as processed in memory and Gmail
             self.processed_emails.add(message_id)
             self.status.processed_emails_count += 1
             processed_email.processed = True
+            
+            # Mark email with Gmail label for persistence across restarts
+            self.gmail_service.mark_as_processed(message_id)
             
             logger.info(f"Email {message_id} processed successfully")
             
