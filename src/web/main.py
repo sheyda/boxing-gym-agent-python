@@ -2,17 +2,57 @@
 
 import asyncio
 import json
+import os
 from datetime import datetime
-from typing import Dict, Any
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from typing import Dict, Any, Optional
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
 from src.agents.boxing_gym_agent import BoxingGymAgent
-from src.config.settings import validate_settings
+from src.config.settings import validate_settings, settings
 from src.models.email_models import AgentStatus
 
+
+# API Key authentication
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def get_api_key() -> Optional[str]:
+    """Get API key from environment or Secret Manager."""
+    # Try environment variable first
+    api_key = os.getenv("API_KEY")
+    if api_key:
+        return api_key.strip()
+    
+    # Try Secret Manager
+    try:
+        from src.config.secret_manager import secret_manager
+        api_key = secret_manager.get_secret("api-key")
+        if api_key:
+            return api_key.strip()
+    except Exception:
+        pass
+    
+    return None
+
+async def verify_api_key(api_key: str = Security(api_key_header)) -> str:
+    """Verify API key from request header."""
+    expected_key = get_api_key()
+    
+    # If no API key is configured, allow access (for backward compatibility)
+    if not expected_key:
+        return "no-auth-configured"
+    
+    # Verify the provided key
+    if not api_key or api_key != expected_key:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or missing API key. Include X-API-Key header."
+        )
+    
+    return api_key
 
 # Global agent instance
 agent: BoxingGymAgent = None
@@ -106,7 +146,7 @@ async def health_check():
 
 
 @app.get("/status", response_model=AgentResponse)
-async def get_agent_status():
+async def get_agent_status(api_key: str = Depends(verify_api_key)):
     """Get detailed agent status."""
     global agent
     
@@ -127,7 +167,7 @@ async def get_agent_status():
 
 
 @app.post("/process-email")
-async def process_email_manual(request: ProcessEmailRequest, background_tasks: BackgroundTasks):
+async def process_email_manual(request: ProcessEmailRequest, background_tasks: BackgroundTasks, api_key: str = Depends(verify_api_key)):
     """Manually trigger email processing."""
     global agent
     
@@ -148,7 +188,7 @@ async def process_email_manual(request: ProcessEmailRequest, background_tasks: B
 
 
 @app.post("/check-emails")
-async def check_emails_manual(background_tasks: BackgroundTasks):
+async def check_emails_manual(background_tasks: BackgroundTasks, api_key: str = Depends(verify_api_key)):
     """Manually trigger email checking."""
     global agent
     
@@ -169,7 +209,7 @@ async def check_emails_manual(background_tasks: BackgroundTasks):
 
 
 @app.get("/processed-emails")
-async def get_processed_emails():
+async def get_processed_emails(api_key: str = Depends(verify_api_key)):
     """Get list of processed email IDs."""
     global agent
     
@@ -185,7 +225,7 @@ async def get_processed_emails():
 
 
 @app.post("/restart")
-async def restart_agent():
+async def restart_agent(api_key: str = Depends(verify_api_key)):
     """Restart the agent."""
     global agent
     
@@ -213,7 +253,7 @@ async def restart_agent():
 
 
 @app.get("/logs")
-async def get_recent_logs():
+async def get_recent_logs(api_key: str = Depends(verify_api_key)):
     """Get recent log entries (simplified)."""
     # This is a simplified version - in production you'd want to integrate
     # with Cloud Logging or a proper log aggregation service
@@ -225,7 +265,7 @@ async def get_recent_logs():
 
 
 @app.get("/debug/secrets")
-async def debug_secrets():
+async def debug_secrets(api_key: str = Depends(verify_api_key)):
     """Debug endpoint to check secret loading sources."""
     import os
     from src.config.secret_manager import secret_manager

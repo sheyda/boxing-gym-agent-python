@@ -91,7 +91,7 @@ jobs:
           --timeout 3600 \
           --max-instances 10 \
           --port 8080 \
-          --set-secrets="GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,OPENAI_API_KEY=openai-api-key:latest,GMAIL_TOKENS=gmail-tokens:latest,GMAIL_USER_EMAIL=gmail-user-email:latest" \
+            --set-secrets="GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,OPENAI_API_KEY=openai-api-key:latest,GMAIL_TOKENS=gmail-tokens:latest,GMAIL_USER_EMAIL=gmail-user-email:latest,API_KEY=api-key:latest" \
           --set-env-vars="${{ env.ENV_VARS }}" \
           --service-account="boxing-gym-agent-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com"
 
