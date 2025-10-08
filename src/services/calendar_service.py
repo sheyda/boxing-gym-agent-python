@@ -138,8 +138,8 @@ class CalendarService:
                                 'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
                                 'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
                             }.get(month_name, 1)
-                            # Assume 2024 for boxing classes (current year)
-                            year = 2024
+                            # Assume current year
+                            year = datetime.now().year
                             date_obj = datetime(year, month_num, int(day))
                         else:
                             raise ValueError("Invalid date format")
